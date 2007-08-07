@@ -1,5 +1,3 @@
-<?php
-
 /**
  * HTTP Response Parser
  *
@@ -41,7 +39,7 @@ class HTTP_Response_Parser
 	 * @var string
 	 */
 	public $body = '';
-
+	
 	/**
 	 * Current state of the state machine
 	 *
@@ -140,34 +138,78 @@ class HTTP_Response_Parser
 	private function is_linear_whitespace()
 	{
 		return (bool) (strspn($this->data, "\x09\x20", $this->position, 1)
-			|| (substr($this->data, $this->position, 2) == "\r\n" && strspn($this->data, "\x09\x20", $this->position + 2, 1))
-			|| (strspn($this->data, "\r\n", $this->position, 1) && strspn($this->data, "\x09\x20", $this->position + 1, 1)));
+			|| ($this->data[$this->position] === "\x0A" && strspn($this->data, "\x09\x20", $this->position + 1, 1)));
 	}
-
-	/**
-	 * The starting state of the state machine, see if the data is a response or request
-	 */
+	
 	private function start()
 	{
-		$this->state = 'http_version_response';
-	}
-
-	/**
-	 * Parse an HTTP-version string
-	 *
-	 * @todo Replace PCRE
-	 */
-	private function http_version()
-	{
-		if (preg_match('/^HTTP\/([0-9]+\.[0-9]+)/i', substr($this->data, $this->position, strcspn($this->data, "\r\n", $this->position)), $match))
+		if (strpos($this->data, "\x0A") !== false
+			&& preg_match('/^HTTP\/([0-9]+\.[0-9]+)[\x09\x20]+([0-9]+)(?:[\x09\x20]+([^\x0A]*))?\x0A/i', $this->data, $match))
 		{
+			$this->http_version = (float) $match[1];
+			$this->status_code = (int) $match[2];
+			$this->reason = rtrim($match[3], "\x0D");
+			$this->state = 'new_line';
 			$this->position += strlen($match[0]);
-			$this->http_version = $match[1];
-			return true;
 		}
 		else
 		{
-			return false;
+			$this->state = false;
+		}
+	}
+	
+	private function new_line()
+	{
+		switch (true)
+		{
+			case substr($this->data[$this->position], 0, 2) === "\x0D\x0A":
+				$this->position++;
+			
+			case $this->data[$this->position] === "\x0A":
+				$this->position++;
+				$this->state = 'body';
+				break;
+			
+			default:
+				$this->value = trim($this->value, "\x0D\x20");
+				if ($this->name !== '' && $this->value !== '')
+				{
+					if (isset($this->headers[$this->name]))
+					{
+						$this->headers[$this->name] .= ', ' . $this->value;
+					}
+					else
+					{
+						$this->headers[$this->name] = $this->value;
+					}
+				}
+				$this->name = '';
+				$this->value = '';
+				$this->position++;
+				$this->state = 'name';
+		}
+	}
+	
+	private function name()
+	{
+		$len = strcspn($this->data, "\x0A:", $this->position);
+		if (isset($this->data[$this->position + $len]))
+		{
+			if ($this->data[$this->position + $len] === "\x0A")
+			{
+				$this->position += $len + 1;
+				$this->state = 'new_line';
+			}
+			else
+			{
+				$this->name = substr($this->data, $this->position, $len);
+				$this->position += $len + 1;
+				$this->state = 'value';
+			}
+		}
+		else
+		{
+			$this->state = false;
 		}
 	}
 
@@ -178,237 +220,104 @@ class HTTP_Response_Parser
 	{
 		do
 		{
-			if (substr($this->data, $this->position, 2) == "\r\n")
+			if (substr($this->data, $this->position, 2) == "\x0D\x0A")
 			{
 				$this->position += 2;
 			}
-			elseif (strspn($this->data, "\r\n", $this->position, 1))
+			elseif ($this->data[$this->position] === "\x0A")
 			{
 				$this->position++;
 			}
 			$this->position += strspn($this->data, "\x09\x20", $this->position);
-		} while ($this->is_linear_whitespace());
+		} while ($this->has_data() && $this->is_linear_whitespace());
 		$this->value .= "\x20";
 	}
-
-	/**
-	 * Parse an HTTP-version string within a response
-	 */
-	private function http_version_response()
-	{
-		if ($this->http_version() && $this->data[$this->position] == "\x20")
-		{
-			$this->state = 'status_code';
-			$this->position++;
-		}
-		else
-		{
-			$this->state = false;
-		}
-	}
-
-	/**
-	 * Parse a status code
-	 */
-	private function status_code()
-	{
-		if (strspn($this->data, '1234567890', $this->position, 3) == 3)
-		{
-			$this->status_code = substr($this->data, $this->position, 3);
-			$this->state = 'reason_phrase';
-			$this->position += 3;
-		}
-		else
-		{
-			$this->state = false;
-		}
-	}
-
-	/**
-	 * Skip over the reason phrase (it has no normative value, and you can send absolutely anything here)
-	 */
-	private function reason_phrase()
-	{
-		$len = strcspn($this->data, "\r\n", $this->position);
-		$this->reason = substr($this->data, $this->position, $len);
-		$this->position += $len;
-		if ($this->has_data())
-		{
-			if (substr($this->data, $this->position, 2) == "\r\n")
-			{
-				$this->position += 2;
-			}
-			elseif (strspn($this->data, "\r\n", $this->position, 1))
-			{
-				$this->position++;
-			}
-			$this->state = 'name';
-		}
-	}
-
-	/**
-	 * Parse a header name
-	 */
-	private function name()
-	{
-		$len = strcspn($this->data, ':', $this->position);
-		$this->name = substr($this->data, $this->position, $len);
-		$this->position += $len;
-
-		if ($this->has_data() && $this->data[$this->position] == ':')
-		{
-			$this->state = 'value_next';
-			$this->position++;
-		}
-		else
-		{
-			$this->state = false;
-		}
-	}
-
-	/**
-	 * See what state to move the state machine to while within non-quoted header values
-	 */
-	private function value_next()
+	
+	private function value()
 	{
 		if ($this->is_linear_whitespace())
 		{
-			$this->state = 'value_linear_whitespace';
-		}
-		elseif ($this->data[$this->position] == '"')
-		{
-			$this->state = 'value_quote_next';
-			$this->position++;
-		}
-		elseif (substr($this->data, $this->position, 2) == "\r\n")
-		{
-			$this->state = 'end_crlf';
-			$this->position += 2;
-		}
-		elseif (strspn($this->data, "\r\n", $this->position, 1))
-		{
-			$this->state = 'end_crlf';
-			$this->position++;
-		}
-		else
-		{
-			$this->state = 'value_no_quote';
-		}
-	}
-
-	/**
-	 * Parse a header value while outside quotes
-	 */
-	private function value_no_quote()
-	{
-		$len = strcspn($this->data, "\x09\x20\r\n\"", $this->position);
-		$this->value .= substr($this->data, $this->position, $len);
-		$this->state = 'value_next';
-		$this->position += $len;
-	}
-
-	/**
-	 * Parse LWS outside quotes
-	 */
-	private function value_linear_whitespace()
-	{
-		$this->linear_whitespace();
-		$this->state = 'value_next';
-	}
-
-	/**
-	 * See what state to move the state machine to while within quoted header values
-	 */
-	private function value_quote_next()
-	{
-		if ($this->is_linear_whitespace())
-		{
-			$this->state = 'value_linear_whitespace_quote';
+			$this->linear_whitespace();
 		}
 		else
 		{
 			switch ($this->data[$this->position])
 			{
 				case '"':
-					$this->state = 'value_next';
 					$this->position++;
+					$this->state = 'quote';
 					break;
-
-				case '\\':
-					$this->state = 'value_quote_char';
+				
+				case "\x0A":
 					$this->position++;
+					$this->state = 'new_line';
 					break;
-
+				
 				default:
-					$this->state = 'value_quote';
+					$this->state = 'value_char';
 					break;
 			}
 		}
 	}
-
-	/**
-	 * Parse a header value while within quotes
-	 */
-	private function value_quote()
+	
+	private function value_char()
 	{
-		$len = strcspn($this->data, "\x09\x20\r\n\"\\", $this->position);
+		$len = strcspn($this->data, "\x09\x20\x0A\"", $this->position);
 		$this->value .= substr($this->data, $this->position, $len);
 		$this->position += $len;
-		$this->state = 'value_quote_next';
+		$this->state = 'value';
 	}
-
-	/**
-	 * Parse an escaped character within quotes
-	 */
-	private function value_quote_char()
+	
+	private function quote()
+	{
+		if ($this->is_linear_whitespace())
+		{
+			$this->linear_whitespace();
+		}
+		else
+		{
+			switch ($this->data[$this->position])
+			{
+				case '"':
+					$this->position++;
+					$this->state = 'value';
+					break;
+				
+				case "\x0A":
+					$this->position++;
+					$this->state = 'new_line';
+					break;
+				
+				case '\\':
+					$this->position++;
+					$this->state = 'quote_escaped';
+					break;
+				
+				default:
+					$this->state = 'quote_char';
+					break;
+			}
+		}
+	}
+	
+	private function quote_char()
+	{
+		$len = strcspn($this->data, "\x09\x20\x0A\"\\", $this->position);
+		$this->value .= substr($this->data, $this->position, $len);
+		$this->position += $len;
+		$this->state = 'value';
+	}
+	
+	private function quote_escaped()
 	{
 		$this->value .= $this->data[$this->position];
-		$this->state = 'value_quote_next';
 		$this->position++;
+		$this->state = 'quote';
 	}
-
-	/**
-	 * Parse LWS within quotes
-	 */
-	private function value_linear_whitespace_quote()
+	
+	private function body()
 	{
-		$this->linear_whitespace();
-		$this->state = 'value_quote_next';
-	}
-
-	/**
-	 * Parse a CRLF, and see whether we have a further header, or whether we are followed by the body
-	 */
-	private function end_crlf()
-	{
-		$this->name = strtolower($this->name);
-		$this->value = trim($this->value, "\x20");
-		if (isset($this->headers[$this->name]))
-		{
-			$this->headers[$this->name] .= ', ' . $this->value;
-		}
-		else
-		{
-			$this->headers[$this->name] = $this->value;
-		}
-
-		if (substr($this->data, $this->position, 2) == "\r\n")
-		{
-			$this->body = substr($this->data, $this->position + 2);
-			$this->state = 'emit';
-		}
-		elseif (strspn($this->data, "\r\n", $this->position, 1))
-		{
-			$this->body = substr($this->data, $this->position + 1);
-			$this->state = 'emit';
-		}
-		else
-		{
-			$this->name = '';
-			$this->value = '';
-			$this->state = 'name';
-		}
+		$this->body = substr($this->data, $this->position);
+		$this->state = 'emit';
 	}
 }
-
-?>

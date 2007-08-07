@@ -154,7 +154,7 @@ class HTTP_Response_Parser
 			$len = strspn($this->data, '0123456789.', 5);
 			$this->http_version = substr($this->data, 5, $len);
 			$this->position += 5 + $len;
-			if (substr_count($this->http_version, '.') <= 1 && isset($this->data[$this->position]))
+			if (substr_count($this->http_version, '.') <= 1)
 			{
 				$this->http_version = (float) $this->http_version;
 				$this->position += strspn($this->data, "\x09\x20", $this->position);
@@ -195,7 +195,7 @@ class HTTP_Response_Parser
 	{
 		$len = strcspn($this->data, "\x0A", $this->position);
 		$this->reason = trim(substr($this->data, $this->position, $len), "\x09\x0D\x20");
-		$this->position += $len;
+		$this->position += $len + 1;
 		$this->state = 'new_line';
 	}
 	
@@ -207,6 +207,7 @@ class HTTP_Response_Parser
 		$this->value = trim($this->value, "\x0D\x20");
 		if ($this->name !== '' && $this->value !== '')
 		{
+			$this->name = strtolower($this->name);
 			if (isset($this->headers[$this->name]))
 			{
 				$this->headers[$this->name] .= ', ' . $this->value;

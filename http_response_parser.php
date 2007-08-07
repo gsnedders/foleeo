@@ -1,3 +1,5 @@
+<?php
+
 /**
  * HTTP Response Parser
  *
@@ -160,6 +162,20 @@ class HTTP_Response_Parser
 	
 	private function new_line()
 	{
+		$this->value = trim($this->value, "\x0D\x20");
+		if ($this->name !== '' && $this->value !== '')
+		{
+			if (isset($this->headers[$this->name]))
+			{
+				$this->headers[$this->name] .= ', ' . $this->value;
+			}
+			else
+			{
+				$this->headers[$this->name] = $this->value;
+			}
+		}
+		$this->name = '';
+		$this->value = '';
 		switch (true)
 		{
 			case substr($this->data[$this->position], 0, 2) === "\x0D\x0A":
@@ -171,21 +187,6 @@ class HTTP_Response_Parser
 				break;
 			
 			default:
-				$this->value = trim($this->value, "\x0D\x20");
-				if ($this->name !== '' && $this->value !== '')
-				{
-					if (isset($this->headers[$this->name]))
-					{
-						$this->headers[$this->name] .= ', ' . $this->value;
-					}
-					else
-					{
-						$this->headers[$this->name] = $this->value;
-					}
-				}
-				$this->name = '';
-				$this->value = '';
-				$this->position++;
 				$this->state = 'name';
 		}
 	}
@@ -197,7 +198,7 @@ class HTTP_Response_Parser
 		{
 			if ($this->data[$this->position + $len] === "\x0A")
 			{
-				$this->position += $len + 1;
+				$this->position += $len;
 				$this->state = 'new_line';
 			}
 			else
@@ -321,3 +322,5 @@ class HTTP_Response_Parser
 		$this->state = 'emit';
 	}
 }
+
+?>

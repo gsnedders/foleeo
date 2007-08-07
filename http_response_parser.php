@@ -116,6 +116,7 @@ class HTTP_Response_Parser
 		{
 			$this->http_version = '';
 			$this->status_code = '';
+			$this->reason = '';
 			$this->headers = array();
 			$this->body = '';
 			return false;

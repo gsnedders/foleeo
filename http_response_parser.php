@@ -102,13 +102,13 @@ class HTTP_Response_Parser
 	 */
 	public function parse()
 	{
-		while ($this->state && $this->state != 'emit' && $this->has_data())
+		while ($this->state && $this->state !== 'emit' && $this->has_data())
 		{
 			$state = $this->state;
 			$this->$state();
 		}
 		$this->data = '';
-		if ($this->state == 'emit')
+		if ($this->state === 'emit')
 		{
 			return true;
 		}
@@ -222,7 +222,7 @@ class HTTP_Response_Parser
 	{
 		do
 		{
-			if (substr($this->data, $this->position, 2) == "\x0D\x0A")
+			if (substr($this->data, $this->position, 2) === "\x0D\x0A")
 			{
 				$this->position += 2;
 			}

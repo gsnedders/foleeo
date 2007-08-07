@@ -10,16 +10,16 @@ class HTTP_Response_Parser
 	/**
 	 * HTTP Version
 	 *
-	 * @var string
+	 * @var float
 	 */
-	public $http_version = '';
+	public $http_version = 0.0;
 
 	/**
 	 * Status code
 	 *
-	 * @var string
+	 * @var int
 	 */
-	public $status_code = '';
+	public $status_code = 0;
 
 	/**
 	 * Reason phrase
@@ -149,19 +149,41 @@ class HTTP_Response_Parser
 	 */
 	private function start()
 	{
-		if (strpos($this->data, "\x0A") !== false
-			&& preg_match('/^HTTP\/([0-9]+\.[0-9]+)[\x09\x20]+([0-9]+)(?:[\x09\x20]+([^\x0A]*))?\x0A/i', $this->data, $match))
+		if (strpos($this->data, "\x0A") !== false && stripos($this->data, 'HTTP/') === 0)
 		{
-			$this->http_version = (float) $match[1];
-			$this->status_code = (int) $match[2];
-			$this->reason = rtrim($match[3], "\x0D");
-			$this->state = 'new_line';
-			$this->position += strlen($match[0]);
+			$len = strspn($this->data, '0123456789.', 5);
+			$this->http_version = substr($this->data, 5, $len);
+			$this->position += 5 + $len;
+			if (substr_count($this->http_version, '.') <= 1 && isset($this->data[$this->position]))
+			{
+				$this->http_version = (float) $this->http_version;
+				$this->position += strspn($this->data, "\x09\x20", $this->position);
+				$this->state = 'status';
+			}
+		}
+		$this->state = false;
+	}
+	
+	private function status()
+	{
+		if ($len = strspn($this->data, '0123456789', $this->position))
+		{
+			$this->status_code = (int) substr($this->data, $this->position, $len);
+			$this->position += $len;
+			$this->status = 'reason';
 		}
 		else
 		{
-			$this->state = false;
+			$this->status = false;
 		}
+	}
+	
+	private function reason()
+	{
+		$len = strcspn($this->data, "\x0A", $this->position);
+		$this->reason = trim(substr($this->data, $this->position, $len), "\x09\x0D\x20");
+		$this->position += $len;
+		$this->status = 'new_line';
 	}
 	
 	/**

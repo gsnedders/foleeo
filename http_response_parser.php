@@ -140,8 +140,11 @@ class HTTP_Response_Parser
 	 */
 	private function is_linear_whitespace()
 	{
-		return (bool) (strspn($this->data, "\x09\x20", $this->position, 1)
-			|| ($this->data[$this->position] === "\x0A" && strspn($this->data, "\x09\x20", $this->position + 1, 1)));
+		return (bool) ($this->data[$this->position] === "\x09"
+			|| $this->data[$this->position] === "\x20"
+			|| ($this->data[$this->position] === "\x0A"
+				&& isset($this->data[$this->position + 1])
+				&& ($this->data[$this->position + 1] === "\x09" || $this->data[$this->position + 1] === "\x20")));
 	}
 	
 	/**

@@ -160,8 +160,15 @@ class HTTP_Response_Parser
 				$this->position += strspn($this->data, "\x09\x20", $this->position);
 				$this->state = 'status';
 			}
+			else
+			{
+				$this->state = false;
+			}
 		}
-		$this->state = false;
+		else
+		{
+			$this->state = false;
+		}
 	}
 	
 	/**
@@ -173,11 +180,11 @@ class HTTP_Response_Parser
 		{
 			$this->status_code = (int) substr($this->data, $this->position, $len);
 			$this->position += $len;
-			$this->status = 'reason';
+			$this->state = 'reason';
 		}
 		else
 		{
-			$this->status = false;
+			$this->state = false;
 		}
 	}
 	
@@ -189,7 +196,7 @@ class HTTP_Response_Parser
 		$len = strcspn($this->data, "\x0A", $this->position);
 		$this->reason = trim(substr($this->data, $this->position, $len), "\x09\x0D\x20");
 		$this->position += $len;
-		$this->status = 'new_line';
+		$this->state = 'new_line';
 	}
 	
 	/**

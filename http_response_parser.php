@@ -47,7 +47,7 @@ class HTTP_Response_Parser
 	 *
 	 * @var string
 	 */
-	private $state = 'start';
+	private $state = 'http_version';
 
 	/**
 	 * Input data
@@ -145,9 +145,9 @@ class HTTP_Response_Parser
 	}
 	
 	/**
-	 * Parse the status line
+	 * Parse the HTTP version
 	 */
-	private function start()
+	private function http_version()
 	{
 		if (strpos($this->data, "\x0A") !== false && stripos($this->data, 'HTTP/') === 0)
 		{
@@ -164,6 +164,9 @@ class HTTP_Response_Parser
 		$this->state = false;
 	}
 	
+	/**
+	 * Parse the status code
+	 */
 	private function status()
 	{
 		if ($len = strspn($this->data, '0123456789', $this->position))
@@ -178,6 +181,9 @@ class HTTP_Response_Parser
 		}
 	}
 	
+	/**
+	 * Parse the reason phrase
+	 */
 	private function reason()
 	{
 		$len = strcspn($this->data, "\x0A", $this->position);
@@ -205,18 +211,19 @@ class HTTP_Response_Parser
 		}
 		$this->name = '';
 		$this->value = '';
-		switch (true)
+		if (substr($this->data[$this->position], 0, 2) === "\x0D\x0A")
 		{
-			case substr($this->data[$this->position], 0, 2) === "\x0D\x0A":
-				$this->position++;
-			
-			case $this->data[$this->position] === "\x0A":
-				$this->position++;
-				$this->state = 'body';
-				break;
-			
-			default:
-				$this->state = 'name';
+			$this->position += 2;
+			$this->state = 'body';
+		}
+		elseif ($this->data[$this->position] === "\x0A")
+		{
+			$this->position++;
+			$this->state = 'body';
+		}
+		else
+		{
+			$this->state = 'name';
 		}
 	}
 	

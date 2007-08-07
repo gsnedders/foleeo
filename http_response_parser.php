@@ -144,6 +144,9 @@ class HTTP_Response_Parser
 			|| ($this->data[$this->position] === "\x0A" && strspn($this->data, "\x09\x20", $this->position + 1, 1)));
 	}
 	
+	/**
+	 * Parse the status line
+	 */
 	private function start()
 	{
 		if (strpos($this->data, "\x0A") !== false
@@ -161,6 +164,9 @@ class HTTP_Response_Parser
 		}
 	}
 	
+	/**
+	 * Deal with a new line, shifting data around as needed
+	 */
 	private function new_line()
 	{
 		$this->value = trim($this->value, "\x0D\x20");
@@ -192,6 +198,9 @@ class HTTP_Response_Parser
 		}
 	}
 	
+	/**
+	 * Parse a header name
+	 */
 	private function name()
 	{
 		$len = strcspn($this->data, "\x0A:", $this->position);
@@ -216,7 +225,7 @@ class HTTP_Response_Parser
 	}
 
 	/**
-	 * Parse LWS, replacing consecutive characters with a single space
+	 * Parse LWS, replacing consecutive LWS characters with a single space
 	 */
 	private function linear_whitespace()
 	{
@@ -235,6 +244,9 @@ class HTTP_Response_Parser
 		$this->value .= "\x20";
 	}
 	
+	/**
+	 * See what state to move to while within non-quoted header values
+	 */
 	private function value()
 	{
 		if ($this->is_linear_whitespace())
@@ -262,6 +274,9 @@ class HTTP_Response_Parser
 		}
 	}
 	
+	/**
+	 * Parse a header value while outside quotes
+	 */
 	private function value_char()
 	{
 		$len = strcspn($this->data, "\x09\x20\x0A\"", $this->position);
@@ -270,6 +285,9 @@ class HTTP_Response_Parser
 		$this->state = 'value';
 	}
 	
+	/**
+	 * See what state to move to while within quoted header values
+	 */
 	private function quote()
 	{
 		if ($this->is_linear_whitespace())
@@ -302,6 +320,9 @@ class HTTP_Response_Parser
 		}
 	}
 	
+	/**
+	 * Parse a header value while within quotes
+	 */
 	private function quote_char()
 	{
 		$len = strcspn($this->data, "\x09\x20\x0A\"\\", $this->position);
@@ -310,6 +331,9 @@ class HTTP_Response_Parser
 		$this->state = 'value';
 	}
 	
+	/**
+	 * Parse an escaped character within quotes
+	 */
 	private function quote_escaped()
 	{
 		$this->value .= $this->data[$this->position];
@@ -317,6 +341,9 @@ class HTTP_Response_Parser
 		$this->state = 'quote';
 	}
 	
+	/**
+	 * Parse the body
+	 */
 	private function body()
 	{
 		$this->body = substr($this->data, $this->position);

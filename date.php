@@ -191,6 +191,8 @@ class Parse_Date extends Base_Parse_Date
 		if (preg_match($pcre, $this->remove_rfc2822_comments($this->date), $match))
 		{
 			static $timezones = array('EST' => -18000, 'EDT' => -14400, 'CST' => -21600, 'CDT' => -18000, 'MST' => -25200, 'MDT' => -21600, 'PST' => -28800, 'PDT' => -25200);
+			
+			// Find the month number
 			$month = $this->month[strtolower($match[3])];
 			
 			// Numeric timezone
@@ -212,6 +214,16 @@ class Parse_Date extends Base_Parse_Date
 			else
 			{
 				$timezone = 0;
+			}
+			
+			// Deal with 2/3 digit years
+			if ($match[4] < 50)
+			{
+				$match[4] += 2000;
+			}
+			elseif ($match[4] < 1000)
+			{
+				$match[4] += 1900;
 			}
 			
 			return gmmktime($match[5], $match[6], $match[7], $month, $match[2], $match[4]) - $timezone;

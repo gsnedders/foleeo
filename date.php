@@ -100,10 +100,8 @@ class Parse_Date extends Base_Parse_Date
 			$space = '[\x09\x20]+';
 			$wday_name = '(' . implode(array_keys($this->day), '|') . ')';
 			$mon_name = '(' . implode(array_keys($this->month), '|') . ')';
-			$day = '([0-2][0-9]|3[01])';
-			$hour = '([01][0-9]|2[0-3])';
-			$min = '([0-5][0-9])';
-			$sec = $min;
+			$day = '([0-9]{1,2})';
+			$hour = $sec = $min = '([0-9]{2})';
 			$year = '([0-9]{4})';
 			$pcre = '/^' . $wday_name . $space . $mon_name . $space . $day . $space . $hour . ':' . $min . ':' . $sec . $space . $year . '$/i';
 		}

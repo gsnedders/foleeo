@@ -69,6 +69,14 @@ abstract class Base_Parse_Date
 		'perjantai' => 5,
 		'lauantai' => 6,
 		'sunnuntai' => 7,
+		// Hungarian
+		'hétfő' => 1,
+		'kedd' => 2,
+		'szerda' => 3,
+		'csütörtok' => 4,
+		'péntek' => 5,
+		'szombat' => 6,
+		'vasárnap' => 7,
 	);
 	
 	protected $month = array(
@@ -176,6 +184,19 @@ abstract class Base_Parse_Date
 		'lokakuu' => 10,
 		'marras' => 11,
 		'joulukuu' => 12,
+		// Hungarian
+		'január' => 1,
+		'február' => 2,
+		'március' => 3,
+		'április' => 4,
+		'május' => 5,
+		'június' => 6,
+		'július' => 7,
+		'augusztus' => 8,
+		'szeptember' => 9,
+		'október' => 10,
+		'november' => 11,
+		'december' => 12,
 	);
 	
 	protected $timezone = array(

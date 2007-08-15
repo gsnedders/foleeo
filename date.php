@@ -5,6 +5,7 @@ abstract class Base_Parse_Date
 	protected $date;
 	
 	protected $day = array(
+		// English
 		'mon' => 1,
 		'monday' => 1,
 		'tue' => 2,
@@ -19,9 +20,26 @@ abstract class Base_Parse_Date
 		'saturday' => 6,
 		'sun' => 7,
 		'sunday' => 7,
+		// Dutch
+		'maandag' => 1,
+		'dinsdag' => 2,
+		'woensdag' => 3,
+		'donderdag' => 4,
+		'vrijdag' => 5,
+		'zaterdag' => 6,
+		'zondag' => 7,
+		// French
+		'lundi' => 1,
+		'mardi' => 2,
+		'mercredi' => 3,
+		'jeudi' => 4,
+		'vendredi' => 5,
+		'samedi' => 6,
+		'dimanche' => 7,
 	);
 	
 	protected $month = array(
+		// English
 		'jan' => 1,
 		'january' => 1,
 		'feb' => 2,
@@ -46,6 +64,32 @@ abstract class Base_Parse_Date
 		'november' => 11,
 		'dec' => 12,
 		'december' => 12,
+		// Dutch
+		'januari' => 1,
+		'februari' => 2,
+		'maart' => 3,
+		'april' => 4,
+		'mei' => 5,
+		'juni' => 6,
+		'juli' => 7,
+		'augustus' => 8,
+		'september' => 9,
+		'oktober' => 10,
+		'november' => 11,
+		'december' => 12,
+		// French
+		'janvier' => 1,
+		'février' => 2,
+		'mars' => 3,
+		'avril' => 4,
+		'mai' => 5,
+		'juin' => 6,
+		'juillet' => 7,
+		'août' => 8,
+		'septembre' => 9,
+		'octobre' => 10,
+		'novembre' => 11,
+		'décembre' => 12,
 	);
 	
 	protected $timezone = array(
@@ -479,10 +523,61 @@ class Parse_Date extends Base_Parse_Date
 		{
 			return false;
 		}
-	}	
+	}
+	
+	protected function date_w3cdtf()
+	{
+		static $pcre;
+		if (!$pcre)
+		{
+			$year = '([0-9]{4})';
+			$month = $day = $hour = $minute = $second = '([0-9]{2})';
+			$decimal = '([0-9]+)';
+			$zone = '(?:(Z)|([+\-])([0-9]{2}):([0-9]{2}))';
+			$pcre = '/^' . $year . '(?:-' . $month . '(?:-' . $day . '(?:T' . $hour . '(?::' . $minute . '(?::' . $second . '(?:.' . $decimal . ')?' . $zone . ')?)?)?)?)?$/';
+		}
+		if (preg_match($pcre, $this->remove_rfc2822_comments($this->date), $match))
+		{
+			for ($i = count($match); $i <= 3; $i++)
+			{
+				$match[$i] = '1';
+			}
+			
+			for ($i = count($match); $i <= 7; $i++)
+			{
+				$match[$i] = '0';
+			}
+			
+			for ($i = count($match); $i <= 11; $i++)
+			{
+				$match[$i] = '';
+			}
+			
+			// Numeric timezone
+			if ($match[9] !== '')
+			{
+				$timezone = $match[10] * 3600;
+				$timezone += $match[11] * 60;
+				if ($match[9] === '-')
+				{
+					$timezone = 0 - $timezone;
+				}
+			}
+			else
+			{
+				$timezone = 0;
+			}
+			
+			return gmmktime($match[4], $match[5], $match[6] += $match[7] * pow(10, strlen($match[7])), $match[2], $match[3], $match[1]) - $timezone;
+		}
+		else
+		{
+			return false;
+		}
+	}
 }
-
-$parser = new Parse_Date(date(DATE_RFC850));
+var_dump(date(DATE_W3C));
+$parser = new Parse_Date(date(DATE_W3C));
 var_dump($parser->parse() === time());
 
 ?>

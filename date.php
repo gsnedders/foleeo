@@ -1,9 +1,24 @@
 <?php
 
-abstract class Base_Parse_Date
+/**
+ * Date Parser
+ *
+ * @package Date
+ */
+class Parse_Date
 {
+	/**
+	 * Input data
+	 *
+	 * @var string
+	 */
 	protected $date;
 
+	/**
+	 * List of days, calendar day name => ordinal day number in the week
+	 *
+	 * @var array
+	 */
 	protected $day = array(
 		// English
 		'mon' => 1,
@@ -87,6 +102,11 @@ abstract class Base_Parse_Date
 		'Κυρ' => 7,
 	);
 
+	/**
+	 * List of months, calendar month name => calendar month number
+	 *
+	 * @var array
+	 */
 	protected $month = array(
 		// English
 		'jan' => 1,
@@ -226,6 +246,11 @@ abstract class Base_Parse_Date
 		'Δεκ' => 12,
 	);
 
+	/**
+	 * List of timezones, abbreviation => offset from UTC
+	 *
+	 * @var array
+	 */
 	protected $timezone = array(
 		'ACDT' => 37800,
 		'ACIT' => 28800,
@@ -428,9 +453,32 @@ abstract class Base_Parse_Date
 		'YEKT' => 18000,
 	);
 
+	/**
+	 * Cached PCRE for Parse_Date::$day
+	 *
+	 * @var string
+	 */
 	protected $day_pcre;
+
+	/**
+	 * Cached PCRE for Parse_Date::$month
+	 *
+	 * @var string
+	 */
 	protected $month_pcre;
 
+	/**
+	 * Array of user-added callback methods
+	 *
+	 * @var array
+	 */
+	private $methods = array();
+
+	/**
+	 * Create new Parse_Date object, with specific date string
+	 *
+	 * @param string $date Date string to parse
+	 */
 	public function __construct($date)
 	{
 		$this->date = $date;
@@ -438,18 +486,22 @@ abstract class Base_Parse_Date
 		$this->month_pcre = '(' . implode(array_keys($this->month), '|') . ')';
 	}
 
-	public function parse()
+	/**
+	 * Parse the date
+	 *
+	 * @return int Timestamp corresponding to date string, or false on failure
+	 */
+	final public function parse()
 	{
-		if (extension_loaded('Reflection'))
-		{
-			$subclass_methods = $this->get_all_methods();
-		}
-		else
-		{
-			$subclass_methods = get_class_methods($this);
-		}
+		$methods = $this->get_all_methods();
 
-		$methods = array_diff($subclass_methods, get_class_methods(__CLASS__));
+		foreach ($this->methods as $method)
+		{
+			if (($returned = call_user_func(array(&$this, $method))) !== false)
+			{
+				return $returned;
+			}
+		}
 
 		foreach ($methods as $method)
 		{
@@ -462,21 +514,52 @@ abstract class Base_Parse_Date
 		return false;
 	}
 
+	/**
+	 * Add a callback method to parse a date
+	 *
+	 * @param callback $callback
+	 */
+	final public function add_callback($callback)
+	{
+		if (is_callable($callback))
+		{
+			$this->methods[] = $callback;
+		}
+		else
+		{
+			throw new Exception('Callback is not callable');
+		}
+	}
+
+	/**
+	 * Get all the methods in the class, regardless of visibility
+	 *
+	 * @return array
+	 */
 	final private function get_all_methods()
 	{
-		$class = new ReflectionClass(get_class($this));
-		$methods = $class->getMethods();
-		$return = array();
-		foreach ($methods as $method)
+		if (extension_loaded('Reflection'))
 		{
-			$return[] = $method->getName();
+			$class = new ReflectionClass(get_class($this));
+			$methods = $class->getMethods();
+			$return = array();
+			foreach ($methods as $method)
+			{
+				$return[] = $method->getName();
+			}
+			return $return;
 		}
-		return $return;
+		else
+		{
+			return get_class_methods($this);
+		}
 	}
-}
 
-class Parse_Date extends Base_Parse_Date
-{
+	/**
+	 * Parse C99's asctime()'s date format
+	 *
+	 * @return int Timestamp
+	 */
 	protected function date_asctime()
 	{
 		static $pcre;
@@ -488,7 +571,8 @@ class Parse_Date extends Base_Parse_Date
 			$day = '([0-9]{1,2})';
 			$hour = $sec = $min = '([0-9]{2})';
 			$year = '([0-9]{4})';
-			$pcre = '/^' . $wday_name . $space . $mon_name . $space . $day . $space . $hour . ':' . $min . ':' . $sec . $space . $year . '$/i';
+			$terminator = '\x0A?\x00?';
+			$pcre = '/^' . $wday_name . $space . $mon_name . $space . $day . $space . $hour . ':' . $min . ':' . $sec . $space . $year . $terminator . '$/i';
 		}
 		if (preg_match($pcre, $this->date, $match))
 		{
@@ -512,7 +596,13 @@ class Parse_Date extends Base_Parse_Date
 		}
 	}
 
-	private function remove_rfc2822_comments($string)
+	/**
+	 * Remove RFC822 comments
+	 *
+	 * @param string $data Data to strip comments from
+	 * @return string Comment stripped string
+	 */
+	protected function remove_rfc2822_comments($string)
 	{
 		$string = (string) $string;
 		$position = 0;
@@ -566,6 +656,11 @@ class Parse_Date extends Base_Parse_Date
 		return $output;
 	}
 
+	/**
+	 * Parse RFC2822's date format
+	 *
+	 * @return int Timestamp
+	 */
 	protected function date_rfc2822()
 	{
 		static $pcre;
@@ -643,6 +738,11 @@ class Parse_Date extends Base_Parse_Date
 		}
 	}
 
+	/**
+	 * Parse RFC850's date format
+	 *
+	 * @return int Timestamp
+	 */
 	protected function date_rfc850()
 	{
 		static $pcre;
@@ -702,6 +802,13 @@ class Parse_Date extends Base_Parse_Date
 		}
 	}
 
+	/**
+	 * Parse a superset of W3C-DTF (allows hyphens and colons to be omitted, as
+	 * well as allowing any of upper or lower case "T", horizontal tabs, or
+	 * spaces to be used as the time seperator (including more than one))
+	 *
+	 * @return int Timestamp
+	 */
 	protected function date_w3cdtf()
 	{
 		static $pcre;
@@ -772,6 +879,11 @@ class Parse_Date extends Base_Parse_Date
 		}
 	}
 
+	/**
+	 * Parse dates using strtotime()
+	 *
+	 * @return int Timestamp
+	 */
 	protected function date_strtotime()
 	{
 		$strtotime = strtotime($this->date);
@@ -785,8 +897,5 @@ class Parse_Date extends Base_Parse_Date
 		}
 	}
 }
-
-$parser = new Parse_Date('Sun Nov  6 08:49:37 1994');
-var_dump($parser->parse() === time());
 
 ?>

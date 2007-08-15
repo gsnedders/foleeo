@@ -703,9 +703,9 @@ class Parse_Date extends Base_Parse_Date
 			}
 			
 			// Convert the number of seconds to an integer, taking decimals into account
-			$seconds = round($match[6] + $match[7] / pow(10, strlen($match[7])));
+			$second = round($match[6] + $match[7] / pow(10, strlen($match[7])));
 			
-			return gmmktime($match[4], $match[5], , $match[2], $match[3], $match[1]) - $timezone;
+			return gmmktime($match[4], $match[5], $second, $match[2], $match[3], $match[1]) - $timezone;
 		}
 		else
 		{
@@ -713,8 +713,8 @@ class Parse_Date extends Base_Parse_Date
 		}
 	}
 }
-var_dump(date(DATE_W3C));
-$parser = new Parse_Date(date(DATE_W3C));
-var_dump($parser->parse() === time());
+
+$parser = new Parse_Date('Κυρ, 11 Ιούλ 2004 12:00:00 GMT');
+var_dump($parser->parse() === gmmktime(12, 0, 0, 7, 11, 2004));
 
 ?>

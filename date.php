@@ -3,7 +3,7 @@
 abstract class Base_Parse_Date
 {
 	protected $date;
-	
+
 	protected $day = array(
 		// English
 		'mon' => 1,
@@ -86,7 +86,7 @@ abstract class Base_Parse_Date
 		'Σαβ' => 6,
 		'Κυρ' => 7,
 	);
-	
+
 	protected $month = array(
 		// English
 		'jan' => 1,
@@ -225,7 +225,7 @@ abstract class Base_Parse_Date
 		'Νοέ' => 11,
 		'Δεκ' => 12,
 	);
-	
+
 	protected $timezone = array(
 		'ACDT' => 37800,
 		'ACIT' => 28800,
@@ -427,17 +427,17 @@ abstract class Base_Parse_Date
 		'YEKST' => 21600,
 		'YEKT' => 18000,
 	);
-	
+
 	protected $day_pcre;
 	protected $month_pcre;
-	
+
 	public function __construct($date)
 	{
 		$this->date = $date;
 		$this->day_pcre = '(' . implode(array_keys($this->day), '|') . ')';
 		$this->month_pcre = '(' . implode(array_keys($this->month), '|') . ')';
 	}
-	
+
 	public function parse()
 	{
 		if (extension_loaded('Reflection'))
@@ -448,9 +448,9 @@ abstract class Base_Parse_Date
 		{
 			$subclass_methods = get_class_methods($this);
 		}
-		
+
 		$methods = array_diff($subclass_methods, get_class_methods(__CLASS__));
-		
+
 		foreach ($methods as $method)
 		{
 			if (stripos($method, 'date_') === 0 && ($returned = call_user_func(array(&$this, $method))) !== false)
@@ -458,10 +458,10 @@ abstract class Base_Parse_Date
 				return $returned;
 			}
 		}
-		
+
 		return false;
 	}
-	
+
 	final private function get_all_methods()
 	{
 		$class = new ReflectionClass(get_class($this));
@@ -500,16 +500,16 @@ class Parse_Date extends Base_Parse_Date
 			return false;
 		}
 	}
-	
+
 	private function remove_rfc2822_comments($string)
 	{
 		$string = (string) $string;
 		$position = 0;
 		$length = strlen($string);
 		$depth = 0;
-		
+
 		$output = '';
-		
+
 		while ($position < $length && ($pos = strpos($string, '(', $position)) !== false)
 		{
 			$output .= substr($string, $position, $pos - $position);
@@ -532,7 +532,7 @@ class Parse_Date extends Base_Parse_Date
 							case '(':
 								$depth++;
 								break;
-							
+
 							case ')':
 								$depth--;
 								break;
@@ -551,10 +551,10 @@ class Parse_Date extends Base_Parse_Date
 			}
 		}
 		$output .= substr($string, $position);
-		
+
 		return $output;
 	}
-	
+
 	protected function date_rfc2822()
 	{
 		static $pcre;
@@ -577,7 +577,7 @@ class Parse_Date extends Base_Parse_Date
 		{
 			// Find the month number
 			$month = $this->month[strtolower($match[3])];
-			
+
 			// Numeric timezone
 			if ($match[9] !== '')
 			{
@@ -598,7 +598,7 @@ class Parse_Date extends Base_Parse_Date
 			{
 				$timezone = 0;
 			}
-			
+
 			// Deal with 2/3 digit years
 			if ($match[4] < 50)
 			{
@@ -608,7 +608,7 @@ class Parse_Date extends Base_Parse_Date
 			{
 				$match[4] += 1900;
 			}
-			
+
 			return gmmktime($match[5], $match[6], $match[7], $month, $match[2], $match[4]) - $timezone;
 		}
 		else
@@ -616,7 +616,7 @@ class Parse_Date extends Base_Parse_Date
 			return false;
 		}
 	}
-	
+
 	protected function date_rfc850()
 	{
 		static $pcre;
@@ -634,7 +634,7 @@ class Parse_Date extends Base_Parse_Date
 		{
 			// Month
 			$month = $this->month[strtolower($match[3])];
-			
+
 			// Character timezone
 			if (isset($this->timezone[strtoupper($match[8])]))
 			{
@@ -645,7 +645,7 @@ class Parse_Date extends Base_Parse_Date
 			{
 				$timezone = 0;
 			}
-			
+
 			// Deal with 2 digit year
 			if ($match[4] < 50)
 			{
@@ -655,7 +655,7 @@ class Parse_Date extends Base_Parse_Date
 			{
 				$match[4] += 1900;
 			}
-			
+
 			return gmmktime($match[5], $match[6], $match[7], $month, $match[2], $match[4]) - $timezone;
 		}
 		else
@@ -663,7 +663,7 @@ class Parse_Date extends Base_Parse_Date
 			return false;
 		}
 	}
-	
+
 	protected function date_w3cdtf()
 	{
 		static $pcre;
@@ -681,17 +681,17 @@ class Parse_Date extends Base_Parse_Date
 			{
 				$match[$i] = '1';
 			}
-			
+
 			for ($i = count($match); $i <= 7; $i++)
 			{
 				$match[$i] = '0';
 			}
-			
+
 			for ($i = count($match); $i <= 11; $i++)
 			{
 				$match[$i] = '';
 			}
-			
+
 			// Numeric timezone
 			if ($match[9] !== '')
 			{
@@ -706,10 +706,10 @@ class Parse_Date extends Base_Parse_Date
 			{
 				$timezone = 0;
 			}
-			
+
 			// Convert the number of seconds to an integer, taking decimals into account
 			$second = round($match[6] + $match[7] / pow(10, strlen($match[7])));
-			
+
 			return gmmktime($match[4], $match[5], $second, $match[2], $match[3], $match[1]) - $timezone;
 		}
 		else

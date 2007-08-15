@@ -717,6 +717,19 @@ class Parse_Date extends Base_Parse_Date
 			return false;
 		}
 	}
+	
+	protected function date_strtotime()
+	{
+		$strtotime = strtotime($this->date);
+		if ($strtotime === -1 || $strtotime === false)
+		{
+			return false;
+		}
+		else
+		{
+			return $strtotime;
+		}
+	}
 }
 
 $parser = new Parse_Date(date(DATE_ISO8601));

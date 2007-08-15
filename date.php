@@ -670,7 +670,7 @@ class Parse_Date extends Base_Parse_Date
 			$zone = '(?:(Z)|([+\-])([0-9]{2}):([0-9]{2}))';
 			$pcre = '/^' . $year . '(?:-' . $month . '(?:-' . $day . '(?:T' . $hour . '(?::' . $minute . '(?::' . $second . '(?:.' . $decimal . ')?' . $zone . ')?)?)?)?)?$/';
 		}
-		if (preg_match($pcre, $this->remove_rfc2822_comments($this->date), $match))
+		if (preg_match($pcre, $this->date, $match))
 		{
 			for ($i = count($match); $i <= 3; $i++)
 			{

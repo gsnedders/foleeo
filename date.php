@@ -492,6 +492,17 @@ class Parse_Date extends Base_Parse_Date
 		}
 		if (preg_match($pcre, $this->date, $match))
 		{
+			/*
+			Capturing subpatterns:
+			1: Day name
+			2: Month
+			3: Day
+			4: Hour
+			5: Minute
+			6: Second
+			7: Year
+			*/
+
 			$month = $this->month[strtolower($match[2])];
 			return gmmktime($match[4], $match[5], $match[6], $month, $match[3], $match[7]);
 		}
@@ -570,28 +581,43 @@ class Parse_Date extends Base_Parse_Date
 			$year = '([0-9]{2,4})';
 			$num_zone = '([+\-])([0-9]{2})([0-9]{2})';
 			$character_zone = '([A-Z]{1,5})';
-			$zone = '(' . $num_zone . '|' . $character_zone . ')';
+			$zone = '(?:' . $num_zone . '|' . $character_zone . ')';
 			$pcre = '/(?:' . $optional_fws . $day_name . $optional_fws . ',)?' . $optional_fws . $day . $fws . $month . $fws . $year . $fws . $hour . $optional_fws . ':' . $optional_fws . $minute . '(?:' . $optional_fws . ':' . $optional_fws . $second . ')?' . $fws . $zone . '/i';
 		}
 		if (preg_match($pcre, $this->remove_rfc2822_comments($this->date), $match))
 		{
+			/*
+			Capturing subpatterns:
+			1: Day name
+			2: Day
+			3: Month
+			4: Year
+			5: Hour
+			6: Minute
+			7: Second
+			8: Timezone ±
+			9: Timezone hours
+			10: Timezone minutes
+			11: Alphabetic timezone
+			*/
+
 			// Find the month number
 			$month = $this->month[strtolower($match[3])];
 
 			// Numeric timezone
-			if ($match[9] !== '')
+			if ($match[8] !== '')
 			{
-				$timezone = $match[10] * 3600;
-				$timezone += $match[11] * 60;
-				if ($match[9] === '-')
+				$timezone = $match[9] * 3600;
+				$timezone += $match[10] * 60;
+				if ($match[8] === '-')
 				{
 					$timezone = 0 - $timezone;
 				}
 			}
 			// Character timezone
-			elseif (isset($this->timezone[strtoupper($match[12])]))
+			elseif (isset($this->timezone[strtoupper($match[11])]))
 			{
-				$timezone = $this->timezone[strtoupper($match[12])];
+				$timezone = $this->timezone[strtoupper($match[11])];
 			}
 			// Assume everything else to be -0000
 			else
@@ -632,6 +658,18 @@ class Parse_Date extends Base_Parse_Date
 		}
 		if (preg_match($pcre, $this->date, $match))
 		{
+			/*
+			Capturing subpatterns:
+			1: Day name
+			2: Day
+			3: Month
+			4: Year
+			5: Hour
+			6: Minute
+			7: Second
+			8: Timezone
+			*/
+
 			// Month
 			$month = $this->month[strtolower($match[3])];
 
@@ -677,6 +715,22 @@ class Parse_Date extends Base_Parse_Date
 		}
 		if (preg_match($pcre, $this->date, $match))
 		{
+			/*
+			Capturing subpatterns:
+			1: Year
+			2: Month
+			3: Day
+			4: Hour
+			5: Minute
+			6: Second
+			7: Decimal fraction of a second
+			8: Zulu
+			9: Timezone ±
+			10: Timezone hours
+			11: Timezone minutes
+			*/
+
+			// Fill in empty matches
 			for ($i = count($match); $i <= 3; $i++)
 			{
 				$match[$i] = '1';
@@ -717,7 +771,7 @@ class Parse_Date extends Base_Parse_Date
 			return false;
 		}
 	}
-	
+
 	protected function date_strtotime()
 	{
 		$strtotime = strtotime($this->date);
@@ -732,7 +786,7 @@ class Parse_Date extends Base_Parse_Date
 	}
 }
 
-$parser = new Parse_Date(date(DATE_ISO8601));
+$parser = new Parse_Date('Sun Nov  6 08:49:37 1994');
 var_dump($parser->parse() === time());
 
 ?>

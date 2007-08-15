@@ -428,9 +428,14 @@ abstract class Base_Parse_Date
 		'YEKT' => 18000,
 	);
 	
+	protected $day_pcre;
+	protected $month_pcre;
+	
 	public function __construct($date)
 	{
 		$this->date = $date;
+		$this->day_pcre = '(' . implode(array_keys($this->day), '|') . ')';
+		$this->month_pcre = '(' . implode(array_keys($this->month), '|') . ')';
 	}
 	
 	public function parse()
@@ -478,8 +483,8 @@ class Parse_Date extends Base_Parse_Date
 		if (!$pcre)
 		{
 			$space = '[\x09\x20]+';
-			$wday_name = '(' . implode(array_keys($this->day), '|') . ')';
-			$mon_name = '(' . implode(array_keys($this->month), '|') . ')';
+			$wday_name = $this->day_pcre;
+			$mon_name = $this->month_pcre;
 			$day = '([0-9]{1,2})';
 			$hour = $sec = $min = '([0-9]{2})';
 			$year = '([0-9]{4})';
@@ -558,8 +563,8 @@ class Parse_Date extends Base_Parse_Date
 			$wsp = '[\x09\x20]';
 			$fws = '(?:' . $wsp . '+|' . $wsp . '*(?:\x0D\x0A' . $wsp . '+)+)';
 			$optional_fws = $fws . '?';
-			$day_name = '(' . implode(array_keys($this->day), '|') . ')';
-			$month = '(' . implode(array_keys($this->month), '|') . ')';
+			$day_name = $this->day_pcre;
+			$month = $this->month_pcre;
 			$day = '([0-9]{1,2})';
 			$hour = $minute = $second = '([0-9]{2})';
 			$year = '([0-9]{2,4})';
@@ -618,8 +623,8 @@ class Parse_Date extends Base_Parse_Date
 		if (!$pcre)
 		{
 			$space = '[\x09\x20]+';
-			$day_name = '(' . implode(array_keys($this->day), '|') . ')';
-			$month = '(' . implode(array_keys($this->month), '|') . ')';
+			$day_name = $this->day_pcre;
+			$month = $this->month_pcre;
 			$day = '([0-9]{1,2})';
 			$year = $hour = $minute = $second = '([0-9]{2})';
 			$zone = '([A-Z]{1,5})';
@@ -714,7 +719,7 @@ class Parse_Date extends Base_Parse_Date
 	}
 }
 
-$parser = new Parse_Date('Κυρ, 11 Ιούλ 2004 12:00:00 GMT');
-var_dump($parser->parse() === gmmktime(12, 0, 0, 7, 11, 2004));
+$parser = new Parse_Date(date(DATE_ISO8601));
+var_dump($parser->parse() === time());
 
 ?>

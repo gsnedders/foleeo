@@ -568,7 +568,10 @@ class Parse_Date extends Base_Parse_Date
 				$timezone = 0;
 			}
 			
-			return gmmktime($match[4], $match[5], $match[6] += $match[7] * pow(10, strlen($match[7])), $match[2], $match[3], $match[1]) - $timezone;
+			// Convert the number of seconds to an integer, taking decimals into account
+			$seconds = round($match[6] + $match[7] / pow(10, strlen($match[7])));
+			
+			return gmmktime($match[4], $match[5], , $match[2], $match[3], $match[1]) - $timezone;
 		}
 		else
 		{

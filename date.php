@@ -594,7 +594,7 @@ class Parse_Date
 		{
 			$year = '([0-9]{4})';
 			$month = $day = $hour = $minute = $second = '([0-9]{2})';
-			$decimal = '([0-9]+)';
+			$decimal = '([0-9]*)';
 			$zone = '(?:(Z)|([+\-])([0-9]{1,2}):?([0-9]{1,2}))';
 			$pcre = '/^' . $year . '(?:-?' . $month . '(?:-?' . $day . '(?:[Tt\x09\x20]+' . $hour . '(?::?' . $minute . '(?::?' . $second . '(?:.' . $decimal . ')?)?)?' . $zone . ')?)?)?$/';
 		}

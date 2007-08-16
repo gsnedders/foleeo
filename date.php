@@ -596,7 +596,7 @@ class Parse_Date
 			$month = $day = $hour = $minute = $second = '([0-9]{2})';
 			$decimal = '([0-9]+)';
 			$zone = '(?:(Z)|([+\-])([0-9]{1,2}):?([0-9]{1,2}))';
-			$pcre = '/^' . $year . '(?:-?' . $month . '(?:-?' . $day . '(?:[Tt\x09\x20]+' . $hour . '(?::?' . $minute . '(?::?' . $second . '(?:.' . $decimal . ')?' . $zone . ')?)?)?)?)?$/';
+			$pcre = '/^' . $year . '(?:-?' . $month . '(?:-?' . $day . '(?:[Tt\x09\x20]+' . $hour . '(?::?' . $minute . '(?::?' . $second . '(?:.' . $decimal . ')?)?)?' . $zone . ')?)?)?$/';
 		}
 		if (preg_match($pcre, $date, $match))
 		{
@@ -907,8 +907,7 @@ class Parse_Date
 	protected function date_strtotime($date)
 	{
 		$strtotime = strtotime($date);
-		//if ($strtotime === -1 || $strtotime === false)
-		if (true)
+		if ($strtotime === -1 || $strtotime === false)
 		{
 			return false;
 		}

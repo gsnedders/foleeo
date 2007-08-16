@@ -472,18 +472,69 @@ class Parse_Date
 	 *
 	 * @var array
 	 */
-	private $methods = array();
+	private $built_in = array();
+
+	/**
+	 * Array of user-added callback methods
+	 *
+	 * @var array
+	 */
+	private $user = array();
 
 	/**
 	 * Create new Parse_Date object, with specific date string
 	 *
 	 * @param string $date Date string to parse
 	 */
-	public function __construct($date)
+	private function __construct()
 	{
-		$this->date = $date;
 		$this->day_pcre = '(' . implode(array_keys($this->day), '|') . ')';
 		$this->month_pcre = '(' . implode(array_keys($this->month), '|') . ')';
+		
+		static $cache;
+		if (!isset($cache[get_class($this)]))
+		{
+			if (extension_loaded('Reflection'))
+			{
+				$class = new ReflectionClass(get_class($this));
+				$methods = $class->getMethods();
+				$all_methods = array();
+				foreach ($methods as $method)
+				{
+					$all_methods[] = $method->getName();
+				}
+			}
+			else
+			{
+				$all_methods = get_class_methods($this);
+			}
+		
+			foreach ($all_methods as $method)
+			{
+				if (stripos($method, 'date_') === 0)
+				{
+					$cache[get_class($this)][] = $method;
+				}
+			}
+		}
+		
+		foreach ($cache[get_class($this)] as $method)
+		{
+			$this->built_in[] = $method;
+		}
+	}
+	
+	/**
+	 * Get the object
+	 */
+	public function get()
+	{
+		static $object;
+		if (!$object)
+		{
+			$object = new Parse_Date;
+		}
+		return $object;
 	}
 
 	/**
@@ -491,21 +542,19 @@ class Parse_Date
 	 *
 	 * @return int Timestamp corresponding to date string, or false on failure
 	 */
-	final public function parse()
+	final public function parse($date)
 	{
-		$methods = $this->get_all_methods();
-
-		foreach ($this->methods as $method)
+		foreach ($this->user as $method)
 		{
-			if (($returned = call_user_func(array(&$this, $method))) !== false)
+			if (($returned = call_user_func($method, $date)) !== false)
 			{
 				return $returned;
 			}
 		}
-
-		foreach ($methods as $method)
+		
+		foreach ($this->built_in as $method)
 		{
-			if (stripos($method, 'date_') === 0 && ($returned = call_user_func(array(&$this, $method))) !== false)
+			if (($returned = call_user_func(array(&$this, $method), $date)) !== false)
 			{
 				return $returned;
 			}
@@ -523,40 +572,12 @@ class Parse_Date
 	{
 		if (is_callable($callback))
 		{
-			$this->methods[] = $callback;
+			$this->user[] = $callback;
 		}
 		else
 		{
 			throw new Exception('Callback is not callable');
 		}
-	}
-
-	/**
-	 * Get all the methods in the class, regardless of visibility
-	 *
-	 * @return array
-	 */
-	final private function get_all_methods()
-	{
-		static $cache;
-		if (!isset($cache[get_class($this)]))
-		{
-			if (extension_loaded('Reflection'))
-			{
-				$class = new ReflectionClass(get_class($this));
-				$methods = $class->getMethods();
-				$cache[get_class($this)] = array();
-				foreach ($methods as $method)
-				{
-					$cache[get_class($this)][] = $method->getName();
-				}
-			}
-			else
-			{
-				$cache[get_class($this)] = get_class_methods($this);
-			}
-		}
-		return $cache[get_class($this)];
 	}
 
 	/**
@@ -566,7 +587,7 @@ class Parse_Date
 	 *
 	 * @return int Timestamp
 	 */
-	protected function date_w3cdtf()
+	protected function date_w3cdtf($date)
 	{
 		static $pcre;
 		if (!$pcre)
@@ -574,10 +595,10 @@ class Parse_Date
 			$year = '([0-9]{4})';
 			$month = $day = $hour = $minute = $second = '([0-9]{2})';
 			$decimal = '([0-9]+)';
-			$zone = '(?:(Z)|([+\-])([0-9]{2}):?([0-9]{2}))';
+			$zone = '(?:(Z)|([+\-])([0-9]{1,2}):?([0-9]{1,2}))';
 			$pcre = '/^' . $year . '(?:-?' . $month . '(?:-?' . $day . '(?:[Tt\x09\x20]+' . $hour . '(?::?' . $minute . '(?::?' . $second . '(?:.' . $decimal . ')?' . $zone . ')?)?)?)?)?$/';
 		}
-		if (preg_match($pcre, $this->date, $match))
+		if (preg_match($pcre, $date, $match))
 		{
 			/*
 			Capturing subpatterns:
@@ -605,13 +626,8 @@ class Parse_Date
 				$match[$i] = '0';
 			}
 
-			for ($i = count($match); $i <= 11; $i++)
-			{
-				$match[$i] = '';
-			}
-
 			// Numeric timezone
-			if ($match[9] !== '')
+			if (isset($match[9]) && $match[9] !== '')
 			{
 				$timezone = $match[10] * 3600;
 				$timezone += $match[11] * 60;
@@ -701,7 +717,7 @@ class Parse_Date
 	 *
 	 * @return int Timestamp
 	 */
-	protected function date_rfc2822()
+	protected function date_rfc2822($date)
 	{
 		static $pcre;
 		if (!$pcre)
@@ -719,7 +735,7 @@ class Parse_Date
 			$zone = '(?:' . $num_zone . '|' . $character_zone . ')';
 			$pcre = '/(?:' . $optional_fws . $day_name . $optional_fws . ',)?' . $optional_fws . $day . $fws . $month . $fws . $year . $fws . $hour . $optional_fws . ':' . $optional_fws . $minute . '(?:' . $optional_fws . ':' . $optional_fws . $second . ')?' . $fws . $zone . '/i';
 		}
-		if (preg_match($pcre, $this->remove_rfc2822_comments($this->date), $match))
+		if (preg_match($pcre, $this->remove_rfc2822_comments($date), $match))
 		{
 			/*
 			Capturing subpatterns:
@@ -783,7 +799,7 @@ class Parse_Date
 	 *
 	 * @return int Timestamp
 	 */
-	protected function date_rfc850()
+	protected function date_rfc850($date)
 	{
 		static $pcre;
 		if (!$pcre)
@@ -796,7 +812,7 @@ class Parse_Date
 			$zone = '([A-Z]{1,5})';
 			$pcre = '/^' . $day_name . ',' . $space . $day . '-' . $month . '-' . $year . $space . $hour . ':' . $minute . ':' . $second . $space . $zone . '$/i';
 		}
-		if (preg_match($pcre, $this->date, $match))
+		if (preg_match($pcre, $date, $match))
 		{
 			/*
 			Capturing subpatterns:
@@ -847,7 +863,7 @@ class Parse_Date
 	 *
 	 * @return int Timestamp
 	 */
-	protected function date_asctime()
+	protected function date_asctime($date)
 	{
 		static $pcre;
 		if (!$pcre)
@@ -861,7 +877,7 @@ class Parse_Date
 			$terminator = '\x0A?\x00?';
 			$pcre = '/^' . $wday_name . $space . $mon_name . $space . $day . $space . $hour . ':' . $min . ':' . $sec . $space . $year . $terminator . '$/i';
 		}
-		if (preg_match($pcre, $this->date, $match))
+		if (preg_match($pcre, $date, $match))
 		{
 			/*
 			Capturing subpatterns:
@@ -888,10 +904,11 @@ class Parse_Date
 	 *
 	 * @return int Timestamp
 	 */
-	protected function date_strtotime()
+	protected function date_strtotime($date)
 	{
-		$strtotime = strtotime($this->date);
-		if ($strtotime === -1 || $strtotime === false)
+		$strtotime = strtotime($date);
+		//if ($strtotime === -1 || $strtotime === false)
+		if (true)
 		{
 			return false;
 		}

@@ -538,57 +538,97 @@ class Parse_Date
 	 */
 	final private function get_all_methods()
 	{
-		if (extension_loaded('Reflection'))
+		static $cache;
+		if (!isset($cache[get_class($this)]))
 		{
-			$class = new ReflectionClass(get_class($this));
-			$methods = $class->getMethods();
-			$return = array();
-			foreach ($methods as $method)
+			if (extension_loaded('Reflection'))
 			{
-				$return[] = $method->getName();
+				$class = new ReflectionClass(get_class($this));
+				$methods = $class->getMethods();
+				$cache[get_class($this)] = array();
+				foreach ($methods as $method)
+				{
+					$cache[get_class($this)][] = $method->getName();
+				}
 			}
-			return $return;
+			else
+			{
+				$cache[get_class($this)] = get_class_methods($this);
+			}
 		}
-		else
-		{
-			return get_class_methods($this);
-		}
+		return $cache[get_class($this)];
 	}
 
 	/**
-	 * Parse C99's asctime()'s date format
+	 * Parse a superset of W3C-DTF (allows hyphens and colons to be omitted, as
+	 * well as allowing any of upper or lower case "T", horizontal tabs, or
+	 * spaces to be used as the time seperator (including more than one))
 	 *
 	 * @return int Timestamp
 	 */
-	protected function date_asctime()
+	protected function date_w3cdtf()
 	{
 		static $pcre;
 		if (!$pcre)
 		{
-			$space = '[\x09\x20]+';
-			$wday_name = $this->day_pcre;
-			$mon_name = $this->month_pcre;
-			$day = '([0-9]{1,2})';
-			$hour = $sec = $min = '([0-9]{2})';
 			$year = '([0-9]{4})';
-			$terminator = '\x0A?\x00?';
-			$pcre = '/^' . $wday_name . $space . $mon_name . $space . $day . $space . $hour . ':' . $min . ':' . $sec . $space . $year . $terminator . '$/i';
+			$month = $day = $hour = $minute = $second = '([0-9]{2})';
+			$decimal = '([0-9]+)';
+			$zone = '(?:(Z)|([+\-])([0-9]{2}):?([0-9]{2}))';
+			$pcre = '/^' . $year . '(?:-?' . $month . '(?:-?' . $day . '(?:[Tt\x09\x20]+' . $hour . '(?::?' . $minute . '(?::?' . $second . '(?:.' . $decimal . ')?' . $zone . ')?)?)?)?)?$/';
 		}
 		if (preg_match($pcre, $this->date, $match))
 		{
 			/*
 			Capturing subpatterns:
-			1: Day name
+			1: Year
 			2: Month
 			3: Day
 			4: Hour
 			5: Minute
 			6: Second
-			7: Year
+			7: Decimal fraction of a second
+			8: Zulu
+			9: Timezone ±
+			10: Timezone hours
+			11: Timezone minutes
 			*/
 
-			$month = $this->month[strtolower($match[2])];
-			return gmmktime($match[4], $match[5], $match[6], $month, $match[3], $match[7]);
+			// Fill in empty matches
+			for ($i = count($match); $i <= 3; $i++)
+			{
+				$match[$i] = '1';
+			}
+
+			for ($i = count($match); $i <= 7; $i++)
+			{
+				$match[$i] = '0';
+			}
+
+			for ($i = count($match); $i <= 11; $i++)
+			{
+				$match[$i] = '';
+			}
+
+			// Numeric timezone
+			if ($match[9] !== '')
+			{
+				$timezone = $match[10] * 3600;
+				$timezone += $match[11] * 60;
+				if ($match[9] === '-')
+				{
+					$timezone = 0 - $timezone;
+				}
+			}
+			else
+			{
+				$timezone = 0;
+			}
+
+			// Convert the number of seconds to an integer, taking decimals into account
+			$second = round($match[6] + $match[7] / pow(10, strlen($match[7])));
+
+			return gmmktime($match[4], $match[5], $second, $match[2], $match[3], $match[1]) - $timezone;
 		}
 		else
 		{
@@ -803,75 +843,39 @@ class Parse_Date
 	}
 
 	/**
-	 * Parse a superset of W3C-DTF (allows hyphens and colons to be omitted, as
-	 * well as allowing any of upper or lower case "T", horizontal tabs, or
-	 * spaces to be used as the time seperator (including more than one))
+	 * Parse C99's asctime()'s date format
 	 *
 	 * @return int Timestamp
 	 */
-	protected function date_w3cdtf()
+	protected function date_asctime()
 	{
 		static $pcre;
 		if (!$pcre)
 		{
+			$space = '[\x09\x20]+';
+			$wday_name = $this->day_pcre;
+			$mon_name = $this->month_pcre;
+			$day = '([0-9]{1,2})';
+			$hour = $sec = $min = '([0-9]{2})';
 			$year = '([0-9]{4})';
-			$month = $day = $hour = $minute = $second = '([0-9]{2})';
-			$decimal = '([0-9]+)';
-			$zone = '(?:(Z)|([+\-])([0-9]{2}):?([0-9]{2}))';
-			$pcre = '/^' . $year . '(?:-?' . $month . '(?:-?' . $day . '(?:[Tt\x09\x20]+' . $hour . '(?::?' . $minute . '(?::?' . $second . '(?:.' . $decimal . ')?' . $zone . ')?)?)?)?)?$/';
+			$terminator = '\x0A?\x00?';
+			$pcre = '/^' . $wday_name . $space . $mon_name . $space . $day . $space . $hour . ':' . $min . ':' . $sec . $space . $year . $terminator . '$/i';
 		}
 		if (preg_match($pcre, $this->date, $match))
 		{
 			/*
 			Capturing subpatterns:
-			1: Year
+			1: Day name
 			2: Month
 			3: Day
 			4: Hour
 			5: Minute
 			6: Second
-			7: Decimal fraction of a second
-			8: Zulu
-			9: Timezone ±
-			10: Timezone hours
-			11: Timezone minutes
+			7: Year
 			*/
 
-			// Fill in empty matches
-			for ($i = count($match); $i <= 3; $i++)
-			{
-				$match[$i] = '1';
-			}
-
-			for ($i = count($match); $i <= 7; $i++)
-			{
-				$match[$i] = '0';
-			}
-
-			for ($i = count($match); $i <= 11; $i++)
-			{
-				$match[$i] = '';
-			}
-
-			// Numeric timezone
-			if ($match[9] !== '')
-			{
-				$timezone = $match[10] * 3600;
-				$timezone += $match[11] * 60;
-				if ($match[9] === '-')
-				{
-					$timezone = 0 - $timezone;
-				}
-			}
-			else
-			{
-				$timezone = 0;
-			}
-
-			// Convert the number of seconds to an integer, taking decimals into account
-			$second = round($match[6] + $match[7] / pow(10, strlen($match[7])));
-
-			return gmmktime($match[4], $match[5], $second, $match[2], $match[3], $match[1]) - $timezone;
+			$month = $this->month[strtolower($match[2])];
+			return gmmktime($match[4], $match[5], $match[6], $month, $match[3], $match[7]);
 		}
 		else
 		{

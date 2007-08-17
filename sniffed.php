@@ -181,5 +181,43 @@ class sniffed_type
 					return 'text/html';
 				}
 			}
-			elseif (isset(
+			elseif (substr($this->file->body, 0, 1) === '!')
+			{
+				if ($pos < $len && ($pos = strpos($this->file->body, '>', $pos)) !== false)
+				{
+					$pos++;
+				}
+				else
+				{
+					return 'text/html';
+				}
+			}
+			elseif (substr($this->file->body, 0, 1) === '?')
+			{
+				if ($pos < $len && ($pos = strpos($this->file->body, '?>', $pos)) !== false)
+				{
+					$pos += 2;
+				}
+				else
+				{
+					return 'text/html';
+				}
+			}
+			elseif (substr($this->file->body, 0, 3) === 'rss'
+				|| substr($this->file->body, 0, 7) === 'rdf:RDF')
+			{
+				return 'application/rss+xml';
+			}
+			elseif (substr($this->file->body, 0, 4) === 'feed')
+			{
+				return 'application/atom+xml';
+			}
+			else
+			{
+				return 'text/html';
+			}
+		}
+		
+		return 'text/html';
+	}
 }

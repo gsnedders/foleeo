@@ -61,4 +61,23 @@ class sniffed_type
 			return $this->unknown();
 		}
 	}
+	
+	private function text_or_binary()
+	{
+		if (substr($this->file->body, 0, 2) === "\xFE\xFF"
+			|| substr($this->file->body, 0, 2) === "\xFF\xFE"
+			|| substr($this->file->body, 0, 4) === "\x00\x00\xFE\xFF"
+			|| substr($this->file->body, 0, 3) === "\xEF\xBB\xBF")
+		{
+			return 'text/plain';
+		}
+		elseif (preg_match('/[\x00-\x08\x0E-\x1A\x1C-\x1F]/', $this->file->body))
+		{
+			return 'application/octect-stream';
+		}
+		else
+		{
+			return 'text/plain';
+		}
+	}
 }

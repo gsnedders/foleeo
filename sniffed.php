@@ -80,4 +80,43 @@ class sniffed_type
 			return 'text/plain';
 		}
 	}
+	
+	private function unknown()
+	{
+		if (strtolower(substr($this->file->body, 0, 14)) === '<!doctype html'
+			|| strtolower(substr($this->file->body, 0, 5)) === '<html'
+			|| strtolower(substr($this->file->body, 0, 7)) === '<script')
+		{
+			return 'text/html';
+		}
+		elseif (substr($this->file->body, 0, 5) === '%PDF-')
+		{
+			return 'application/pdf';
+		}
+		elseif (substr($this->file->body, 0, 11) === '%!PS-Adobe-')
+		{
+			return 'application/postscript';
+		}
+		elseif (substr($this->file->body, 0, 6) === 'GIF87a'
+			|| substr($this->file->body, 0, 6) === 'GIF89a')
+		{
+			return 'image/gif';
+		}
+		elseif (substr($this->file->body, 0, 8) === "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A")
+		{
+			return 'image/png';
+		}
+		elseif (substr($this->file->body, 0, 3) === "\xFF\xD8\xFF")
+		{
+			return 'image/jpeg';
+		}
+		elseif (substr($this->file->body, 0, 2) === "\x42\x4D")
+		{
+			return 'image/bmp';
+		}
+		else
+		{
+			return $this->text_or_binary();
+		}
+	}
 }

@@ -119,4 +119,67 @@ class sniffed_type
 			return $this->text_or_binary();
 		}
 	}
+	
+	private function image()
+	{
+		if (substr($this->file->body, 0, 6) === 'GIF87a'
+			|| substr($this->file->body, 0, 6) === 'GIF89a')
+		{
+			return 'image/gif';
+		}
+		elseif (substr($this->file->body, 0, 8) === "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A")
+		{
+			return 'image/png';
+		}
+		elseif (substr($this->file->body, 0, 3) === "\xFF\xD8\xFF")
+		{
+			return 'image/jpeg';
+		}
+		elseif (substr($this->file->body, 0, 2) === "\x42\x4D")
+		{
+			return 'image/bmp';
+		}
+		else
+		{
+			return false;
+		}
+	}
+	
+	private function feed_or_html()
+	{
+		$len = strlen($this->file->body);
+		$pos = strspn($this->file->body, "\x09\x0A\x0D\x20");
+		
+		while ($pos < $len)
+		{
+			switch ($this->file->body[$pos])
+			{
+				case "\x09":
+				case "\x0A":
+				case "\x0D":
+				case "\x20":
+					$pos += strspn($this->file->body, "\x09\x0A\x0D\x20", $pos);
+					continue 2;
+				
+				case '<':
+					$pos++;
+					break;
+				
+				default:
+					return 'text/html';
+			}
+			
+			if (substr($this->file->body, 0, 3) === '!--')
+			{
+				$pos += 3;
+				if ($pos < $len && ($pos = strpos($this->file->body, '-->', $pos)) !== false)
+				{
+					$pos += 3;
+				}
+				else
+				{
+					return 'text/html';
+				}
+			}
+			elseif (isset(
 }

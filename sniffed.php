@@ -169,7 +169,7 @@ class sniffed_type
 					return 'text/html';
 			}
 			
-			if (substr($this->file->body, 0, 3) === '!--')
+			if (substr($this->file->body, $pos, 3) === '!--')
 			{
 				$pos += 3;
 				if ($pos < $len && ($pos = strpos($this->file->body, '-->', $pos)) !== false)
@@ -181,7 +181,7 @@ class sniffed_type
 					return 'text/html';
 				}
 			}
-			elseif (substr($this->file->body, 0, 1) === '!')
+			elseif (substr($this->file->body, $pos, 1) === '!')
 			{
 				if ($pos < $len && ($pos = strpos($this->file->body, '>', $pos)) !== false)
 				{
@@ -192,7 +192,7 @@ class sniffed_type
 					return 'text/html';
 				}
 			}
-			elseif (substr($this->file->body, 0, 1) === '?')
+			elseif (substr($this->file->body, $pos, 1) === '?')
 			{
 				if ($pos < $len && ($pos = strpos($this->file->body, '?>', $pos)) !== false)
 				{

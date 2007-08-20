@@ -21,7 +21,7 @@ class sniffed_type
 				return $this->text_or_binary();
 			}
 			
-			if (($pos = strpos($this->file->headers['content-type'], ';')) !== flalse)
+			if (($pos = strpos($this->file->headers['content-type'], ';')) !== false)
 			{ 
 				$official = substr($this->file->headers['content-type'], 0, $pos);
 			}
@@ -203,12 +203,12 @@ class sniffed_type
 					return 'text/html';
 				}
 			}
-			elseif (substr($this->file->body, 0, 3) === 'rss'
-				|| substr($this->file->body, 0, 7) === 'rdf:RDF')
+			elseif (substr($this->file->body, $pos, 3) === 'rss'
+				|| substr($this->file->body, $pos, 7) === 'rdf:RDF')
 			{
 				return 'application/rss+xml';
 			}
-			elseif (substr($this->file->body, 0, 4) === 'feed')
+			elseif (substr($this->file->body, $pos, 4) === 'feed')
 			{
 				return 'application/atom+xml';
 			}

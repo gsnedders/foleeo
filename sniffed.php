@@ -30,7 +30,12 @@ class sniffed_type
 				$official = $this->file->headers['content-type'];
 			}
 			
-			if (substr($official, -4) === '+xml'
+			if ($official === 'unknown/unknown'
+				|| $official === 'application/unknown')
+			{
+				return $this->unknown();
+			}
+			elseif (substr($official, -4) === '+xml'
 				|| $official === 'text/xml'
 				|| $official === 'application/xml')
 			{
@@ -83,9 +88,10 @@ class sniffed_type
 	
 	private function unknown()
 	{
-		if (strtolower(substr($this->file->body, 0, 14)) === '<!doctype html'
-			|| strtolower(substr($this->file->body, 0, 5)) === '<html'
-			|| strtolower(substr($this->file->body, 0, 7)) === '<script')
+		$ws = strspn($this->file->body, "\x09\x0A\x0B\x0C\x0D\x20");
+		if (strtolower(substr($this->file->body, $ws, 14)) === '<!doctype html'
+			|| strtolower(substr($this->file->body, $ws, 5)) === '<html'
+			|| strtolower(substr($this->file->body, $ws, 7)) === '<script')
 		{
 			return 'text/html';
 		}

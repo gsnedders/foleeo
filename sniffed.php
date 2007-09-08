@@ -29,6 +29,7 @@ class sniffed_type
 			{
 				$official = $this->file->headers['content-type'];
 			}
+			$official = strtolower($official);
 			
 			if ($official === 'unknown/unknown'
 				|| $official === 'application/unknown')
